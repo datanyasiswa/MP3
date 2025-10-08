@@ -3,15 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sound Files - ELPEDIA</title>
+  <title>Upload & Daftar Suara Bell</title>
+  <style>
+    body { font-family: Arial; background: #f7f9fb; padding: 30px; }
+    h1 { color: #0078d7; }
+    #list { margin-top: 30px; }
+    .song { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 8px; }
+    audio { width: 100%; }
+    input[type="file"] { margin-top: 15px; }
+    button { background: #0078d7; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+  </style>
 </head>
-<body style="font-family: Arial; padding: 20px;">
-  <h1>🎵 Koleksi Suara Bell </h1>
-  <ul>
-    <li><a href="Indonesia%20Raya%20Vocal%20dan%20Teks.mp3">Indonesia Raya Vocal</a></li>
-    <li><a href="Indonesia%20Pusaka%20-%20Lirik%20Lagu%20Nasional.mp3">Indonesia Pusaka</a></li>
-    <li><a href="Mars%20%26%20Hymne%20MTsN%202%20Ngawi.mp3">Mars & Hymne</a></li>
-    <li><a href="bell-chord1-83260%20(1).mp3">Bell Chord</a></li>
-  </ul>
+<body>
+  <h1>🎵 Upload & Daftar Suara Bell MTsN 2 Ngawi</h1>
+
+  <form id="uploadForm">
+    <input type="file" id="file" accept="audio/mp3" required>
+    <button type="submit">⬆️ Upload MP3</button>
+  </form>
+
+  <p id="status"></p>
+
+  <div id="list">Memuat daftar lagu...</div>
+
+  <script>
+    async function loadSongs() {
+      const res = await fetch(`https://api.github.com/repos/datanyasiswa/sound/contents/`);
+      const files = await res.json();
+      const mp3 = files.filter(f => f.name.endsWith('.mp3'));
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+      mp3.forEach(f => {
+        list.innerHTML += `
+          <div class="song">
+            <strong>${f.name}</strong><br>
+            <audio controls src="${f.name}"></audio>
+          </div>`;
+      });
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const file = document.getElementById('file').files[0];
+      if (!file) return;
+
+      document.getElementById('status').textContent = 'Mengunggah...';
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const content = reader.result.split(',')[1];
+        const resp = await fetch(`https://api.github.com/repos/datanyasiswa/sound/contents/${file.name}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Upload ${file.name}`,
+            content
+          })
+        });
+        if (resp.ok) {
+          document.getElementById('status').textContent = '✅ Berhasil diupload!';
+          loadSongs();
+        } else {
+          document.getElementById('status').textContent = '❌ Gagal upload.';
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    loadSongs();
+  </script>
 </body>
 </html>
