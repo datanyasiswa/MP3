@@ -3,90 +3,113 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎵 Daftar & Upload Suara Bell</title>
+  <title>🎵 Upload & Daftar Suara Bell MTsN 2 Ngawi</title>
   <style>
-    body { font-family: Arial; background: #f7f9fb; padding: 30px; }
-    h1 { color: #0078d7; }
-    #list { margin-top: 30px; }
-    .song { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
-    audio { width: 100%; margin-top: 6px; }
-    button { background: #0078d7; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+    body { font-family: Arial, sans-serif; background: #f7f9fb; padding: 30px; margin: 0; }
+    h1 { color: #0078d7; text-align: center; }
+    form { text-align: center; margin-bottom: 25px; }
+    input[type="file"] { margin-top: 15px; }
+    button { background: #0078d7; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 15px; }
     button:hover { background: #005fa3; }
+    #status { text-align: center; font-weight: bold; margin: 10px; }
+    #list { max-width: 700px; margin: 20px auto; }
+    .song { background: white; padding: 12px 15px; border-radius: 10px; box-shadow: 0 1px 5px rgba(0,0,0,0.1); margin-bottom: 10px; }
+    .song strong { display: block; font-size: 15px; margin-bottom: 6px; color: #333; }
+    audio { width: 100%; outline: none; }
   </style>
 </head>
 <body>
-  <h1>🎵 Upload & Daftar Suara Bell</h1>
+  <h1>🎵 Upload & Daftar Suara Bell MTsN 2 Ngawi</h1>
 
   <form id="uploadForm">
     <input type="file" id="file" accept="audio/*" required>
+    <br>
     <button type="submit">⬆️ Upload File Audio</button>
   </form>
 
   <p id="status"></p>
+
   <div id="list">Memuat daftar lagu...</div>
 
   <script>
-    const REPO = 'datanyasiswa/sound';
-    const BRANCH = 'main'; // ubah jika nama branch berbeda
+    // ==== KONFIGURASI ====
+    const REPO = "datanyasiswa/sound"; // ubah sesuai repo kamu
+    const BRANCH = "main"; // ubah jika branch bukan main
+    const GITHUB_TOKEN = "GANTI_DENGAN_TOKEN_GITHUB_MU"; // masukkan token pribadi
+    // =====================
 
+    // 🔹 Memuat daftar file audio
     async function loadSongs() {
-      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/`);
-      const files = await res.json();
+      const list = document.getElementById("list");
+      list.innerHTML = "⏳ Memuat daftar lagu...";
 
-      // tampilkan semua file audio (.mp3, .wav, .ogg, dll)
-      const audioFiles = files.filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f.name));
+      try {
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/`);
+        const files = await res.json();
 
-      const list = document.getElementById('list');
-      list.innerHTML = '';
+        const audioFiles = files.filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f.name));
 
-      if (!audioFiles.length) {
-        list.innerHTML = '<p>Tidak ada file audio ditemukan.</p>';
-        return;
+        if (!audioFiles.length) {
+          list.innerHTML = "<p>Tidak ada file audio ditemukan.</p>";
+          return;
+        }
+
+        list.innerHTML = "";
+        audioFiles.forEach(f => {
+          const fileUrl = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/${encodeURIComponent(f.name)}`;
+          const displayName = f.name.replace(/\.[^/.]+$/, ""); // tanpa ekstensi
+          list.innerHTML += `
+            <div class="song">
+              <strong>${displayName}</strong>
+              <audio controls src="${fileUrl}"></audio>
+            </div>`;
+        });
+      } catch (err) {
+        list.innerHTML = "⚠️ Gagal memuat daftar file.";
       }
-
-      audioFiles.forEach(f => {
-        list.innerHTML += `
-          <div class="song">
-            <strong>${f.name}</strong><br>
-            <audio controls src="https://raw.githubusercontent.com/${REPO}/${BRANCH}/${encodeURIComponent(f.name)}"></audio>
-          </div>`;
-      });
     }
 
-    document.getElementById('uploadForm').addEventListener('submit', async e => {
+    // 🔹 Proses Upload
+    document.getElementById("uploadForm").addEventListener("submit", async e => {
       e.preventDefault();
-      const file = document.getElementById('file').files[0];
+      const file = document.getElementById("file").files[0];
       if (!file) return;
-      document.getElementById('status').textContent = 'Mengunggah...';
+
+      const status = document.getElementById("status");
+      status.textContent = "📤 Mengunggah...";
 
       const reader = new FileReader();
       reader.onload = async () => {
-        const content = reader.result.split(',')[1];
+        const content = reader.result.split(",")[1];
         try {
           const resp = await fetch(`https://api.github.com/repos/${REPO}/contents/${encodeURIComponent(file.name)}`, {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-              'Authorization': `token ${GITHUB_TOKEN}`, // pastikan variabel ini diisi dengan token GitHub pribadi
-              'Content-Type': 'application/json'
+              "Authorization": `token ${GITHUB_TOKEN}`,
+              "Content-Type": "application/json"
             },
             body: JSON.stringify({
               message: `Upload ${file.name}`,
               content
             })
           });
+
           if (resp.ok) {
-            document.getElementById('status').textContent = '✅ Berhasil diupload!';
+            status.textContent = "✅ Berhasil diupload!";
             loadSongs();
+            // 🔹 Hapus status form dari histori → cegah peringatan “resubmit form”
+            window.history.replaceState({}, document.title, window.location.pathname);
           } else {
-            document.getElementById('status').textContent = '❌ Gagal upload. Cek token dan izin repository.';
+            status.textContent = "❌ Gagal upload. Pastikan token & izin repo benar.";
           }
-        } catch (err) {
-          document.getElementById('status').textContent = '⚠️ Error koneksi.';
+        } catch (error) {
+          status.textContent = "⚠️ Error koneksi.";
         }
       };
       reader.readAsDataURL(file);
     });
 
+    // 🔹 Jalankan awal
     loadSongs();
   </script>
 </body>
