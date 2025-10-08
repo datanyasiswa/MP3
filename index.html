@@ -3,41 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Upload & Daftar Suara Bell</title>
+  <title>🎵 Daftar & Upload Suara Bell</title>
   <style>
     body { font-family: Arial; background: #f7f9fb; padding: 30px; }
     h1 { color: #0078d7; }
     #list { margin-top: 30px; }
-    .song { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 8px; }
-    audio { width: 100%; }
-    input[type="file"] { margin-top: 15px; }
+    .song { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+    audio { width: 100%; margin-top: 6px; }
     button { background: #0078d7; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; }
+    button:hover { background: #005fa3; }
   </style>
 </head>
 <body>
-  <h1>🎵 Upload & Daftar MP3  </h1>
+  <h1>🎵 Upload & Daftar Suara Bell</h1>
 
   <form id="uploadForm">
-    <input type="file" id="file" accept="audio/mp3" required>
-    <button type="submit">⬆️ Upload MP3</button>
+    <input type="file" id="file" accept="audio/*" required>
+    <button type="submit">⬆️ Upload File Audio</button>
   </form>
 
   <p id="status"></p>
-
   <div id="list">Memuat daftar lagu...</div>
 
   <script>
+    const REPO = 'datanyasiswa/sound';
+    const BRANCH = 'main'; // ubah jika nama branch berbeda
+
     async function loadSongs() {
-      const res = await fetch(`https://api.github.com/repos/datanyasiswa/sound/contents/`);
+      const res = await fetch(`https://api.github.com/repos/${REPO}/contents/`);
       const files = await res.json();
-      const mp3 = files.filter(f => f.name.endsWith('.mp3'));
+
+      // tampilkan semua file audio (.mp3, .wav, .ogg, dll)
+      const audioFiles = files.filter(f => /\.(mp3|wav|ogg|m4a)$/i.test(f.name));
+
       const list = document.getElementById('list');
       list.innerHTML = '';
-      mp3.forEach(f => {
+
+      if (!audioFiles.length) {
+        list.innerHTML = '<p>Tidak ada file audio ditemukan.</p>';
+        return;
+      }
+
+      audioFiles.forEach(f => {
         list.innerHTML += `
           <div class="song">
             <strong>${f.name}</strong><br>
-            <audio controls src="${f.name}"></audio>
+            <audio controls src="https://raw.githubusercontent.com/${REPO}/${BRANCH}/${encodeURIComponent(f.name)}"></audio>
           </div>`;
       });
     }
@@ -46,28 +57,31 @@
       e.preventDefault();
       const file = document.getElementById('file').files[0];
       if (!file) return;
-
       document.getElementById('status').textContent = 'Mengunggah...';
 
       const reader = new FileReader();
       reader.onload = async () => {
         const content = reader.result.split(',')[1];
-        const resp = await fetch(`https://api.github.com/repos/datanyasiswa/sound/contents/${file.name}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            message: `Upload ${file.name}`,
-            content
-          })
-        });
-        if (resp.ok) {
-          document.getElementById('status').textContent = '✅ Berhasil diupload!';
-          loadSongs();
-        } else {
-          document.getElementById('status').textContent = '❌ Gagal upload.';
+        try {
+          const resp = await fetch(`https://api.github.com/repos/${REPO}/contents/${encodeURIComponent(file.name)}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `token ${GITHUB_TOKEN}`, // pastikan variabel ini diisi dengan token GitHub pribadi
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              message: `Upload ${file.name}`,
+              content
+            })
+          });
+          if (resp.ok) {
+            document.getElementById('status').textContent = '✅ Berhasil diupload!';
+            loadSongs();
+          } else {
+            document.getElementById('status').textContent = '❌ Gagal upload. Cek token dan izin repository.';
+          }
+        } catch (err) {
+          document.getElementById('status').textContent = '⚠️ Error koneksi.';
         }
       };
       reader.readAsDataURL(file);
