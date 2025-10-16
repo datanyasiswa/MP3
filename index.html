@@ -74,6 +74,19 @@
     });
 
     loadSongs();
+
+// Contoh: saat user klik salah satu link MP3
+document.querySelectorAll("a.mp3file").forEach(a => {
+  a.addEventListener("click", e => {
+    e.preventDefault();
+    const link = e.target.href;
+    // kirim link ke halaman pembuka
+    window.opener.postMessage(link, "*");
+    window.close(); // tutup tab otomatis setelah kirim
+  });
+});
+
+    
   </script>
 </body>
 </html>  
